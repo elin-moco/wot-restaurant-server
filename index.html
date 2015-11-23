@@ -1,0 +1,25 @@
+<html>
+<head>
+  <title>Restaurants Search Demo</title>
+</head>
+<body>
+<form action="">
+  <input id="search" type="text"/>
+</form>
+<pre id="response">
+
+</pre>
+<script src="http://localhost:3000/socket.io/socket.io.js"></script>
+<script type="application/javascript">
+  var socket = io('ws://localhost:3000');
+  var search = document.getElementById('search');
+  var response = document.getElementById('response');
+  socket.on('restaurant-data', function(result) {
+    response.textContent = JSON.stringify(result, null, 2);
+  });
+  search.addEventListener('change', function() {
+    socket.emit('restaurant-service', this.value);
+  });
+</script>
+</body>
+</html>
