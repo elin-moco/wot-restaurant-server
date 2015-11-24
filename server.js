@@ -30,37 +30,42 @@ ThingsServer.prototype.connect = function() {
   var self = this;
   return new Promise(function(resolve, reject) {
     try {
-      var updateData = function(index, value) {
-        var location = self.LOCATIONS[Object.keys(self.LOCATIONS)[index]];
-        if (location) {
-          var oldCrowdedVal = location.crowded;
-          location.crowded = value > self.CROWDED_THRESHOLD;
-          if (oldCrowdedVal != location.crowded) {
-            self.emit('data-changed');
-          }
-        }
-      };
-      var five = require('johnny-five');
-      var board = new five.Board({repl: false});
-      board.on('ready', function() {
-        var led = new five.Led(7);
-        led.on();
-        var crowded0 = new five.Sensor({
-          pin: "A0",
-          freq: 1000
-        });
-        var crowded1 = new five.Sensor({
-          pin: "A1",
-          freq: 1000
-        });
-        crowded0.on("data", function() {
-          updateData(0, this.value);
-        });
-        crowded1.on("data", function() {
-          updateData(1, this.value);
-        });
+      if (self.board) {
         resolve();
-      });
+      } else {
+        // connect to Arduino for the first time
+        var updateData = function(index, value) {
+          var location = self.LOCATIONS[Object.keys(self.LOCATIONS)[index]];
+          if (location) {
+            var oldCrowdedVal = location.crowded;
+            location.crowded = value > self.CROWDED_THRESHOLD;
+            if (oldCrowdedVal != location.crowded) {
+              self.emit('data-changed');
+            }
+          }
+        };
+        var five = require('johnny-five');
+        self.board = new five.Board({repl: false});
+        self.board.on('ready', function() {
+          var led = new five.Led(7);
+          led.on();
+          var crowded0 = new five.Sensor({
+            pin: "A0",
+            freq: 1000
+          });
+          var crowded1 = new five.Sensor({
+            pin: "A1",
+            freq: 1000
+          });
+          crowded0.on("data", function() {
+            updateData(0, this.value);
+          });
+          crowded1.on("data", function() {
+            updateData(1, this.value);
+          });
+          resolve();
+        });
+      }
     } catch (e) {
       console.error(e);
       reject(e);
@@ -86,11 +91,11 @@ ThingsServer.prototype.search = function(terms, callback) {
   }
 };
 
+var things = new ThingsServer();
 
 io.on('connection', function(socket) {
   console.log('socket connected');
   var terms = [];
-  var things = new ThingsServer();
   var searchByTerms = function() {
     things.search(terms, function(data) {
       socket.emit('restaurant-data', data);
